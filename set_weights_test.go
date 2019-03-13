@@ -25,10 +25,17 @@ var _ = Describe("SetWeights", func() {
 			route := "testRoute"
 			routeWeight := "35"
 			args := []string{"update-route-weight", appName, route, routeWeight}
+			appObject := &plugin_models.GetAppModel{
+				Guid: "testAppGuid",
+			}
+
+			cliConn.GetAppReturns(appObject, error)
 			plugin.Run(cliConn, args)
 		})
 		It("will change the weight of the route mapping", func() {
 			Expect(cliConn.GetAppCallCount()).To(Equal(1))
+			err := plugin.SetWeight(cliConn, args)
+			Expect(err).To(BeNil())
 		})
 	})
 	It("successfully sets a weight", func() {
