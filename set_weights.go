@@ -24,6 +24,11 @@ type RouteEntityModel struct {
 	DomainURL string `json:"domain_url"`
 }
 
+type RouteMappingsMettadataModel struct {
+	Guid string `json:"guid"`
+}
+
+//TODO rename
 type MetadataModel struct {
 	Guid string `json:"guid"`
 }
@@ -32,10 +37,10 @@ type DomainEntityModel struct {
 	Name string `json: "name"`
 }
 
-type RouteMappingModel struct {
+type RouteMappingsModel struct {
 	V2Error
-	Metadata MetadataModel     `json:"metadata"`
-	Entity   DomainEntityModel `json:"entity"`
+	Metadata RouteMappingsMetadataModel `json:"metadata"`
+	Entity   RouteMappingsEntityModel   `json:"entity"`
 }
 
 type DomainModel struct {
@@ -144,17 +149,27 @@ func (c *UpdateRouteWeightPlugin) SetWeight(cliConnection plugin.CliConnection, 
 	// then, curl the route mappings endpoint with the app guid and route guid to get the route mapping guid
 	// use route mapping guid and update the weight
 
-	routeMappingJSON, err := cliConnection.CliCommand("curl", fmt.Sprintf("/v3/route_mappings?app_guids=%s&route_guids=%s"), appGUID, routeGUID)
+	routeMappingsJSON, err := cliConnection.CliCommand("curl", fmt.Sprintf("/v3/route_mappings?app_guids=%s&route_guids=%s", appGUID, routeGUID))
 	if err != nil {
 		return err
 	}
-	routeMappingJSONString := strings.Join(routeMappingJSON, "")
-	routeMapping := RouteMappingModel{}
-	err = json.Unmarshal([]byte(routeMappingJSONString), &routeMapping)
+	routeMappingsJSONString := strings.Join(routeMappingsJSON, "")
+	routeMappings := RouteMappingsModel{}
+	err = json.Unmarshal([]byte(routeMappingsJSONString), &routeMappings)
 	if err != nil {
 		return err
 	}
-	//, err = cliConnection.CliCommandWithoutTerminalOutput("curl", fmt.Sprintf("/v3/route_mappings/%s", routeMappingGUID), "-X", "PATCH", "-d", parsedWeight)
+	//TODO figure out correct route mapping guid to use
+	routeMappingLen := len(routeMappings)
+	routeMappingGUID := ""
+	for i := 0; i < routesLen; i++ {
+		routeMapping = routeMappings.Metadata.Guid
+		testvar = true //HOW DO WE KNOW WHICH ONE WE WANT?
+		if testVar {
+			routeMappingGUID := RouteMappingsModel.Guid
+		}
+	}
+	_, err = cliConnection.CliCommandWithoutTerminalOutput("curl", fmt.Sprintf("/v3/route_mappings/%s", routeMappingGUID), "-X", "PATCH", "-d", `{"weight": parsedWeight}`)
 	return nil
 }
 
