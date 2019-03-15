@@ -1,8 +1,6 @@
 package main
 
 import (
-	"encoding/json"
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -10,54 +8,18 @@ import (
 	"code.cloudfoundry.org/cli/plugin"
 )
 
-type UpdateRouteWeightPlugin struct{}
+type UpdateRouteWeightPlugin struct {
+	CliClient cliClient
+}
 
 // Models
-type V2Error struct {
-	Description string `json:"description,omitempty"`
-	ErrorCode   string `json:"error_code,omitempty"`
-	Code        int    `json:"code,omitempty"`
-}
-
-type RouteEntityModel struct {
-	Host      string `json:"host"`
-	DomainURL string `json:"domain_url"`
-}
-
-type RouteMappingsMettadataModel struct {
-	Guid string `json:"guid"`
-}
-
-//TODO rename
-type MetadataModel struct {
-	Guid string `json:"guid"`
-}
-
-type DomainEntityModel struct {
-	Name string `json: "name"`
-}
-
-type RouteMappingsModel struct {
-	V2Error
-	Metadata RouteMappingsMetadataModel `json:"metadata"`
-	Entity   RouteMappingsEntityModel   `json:"entity"`
-}
-
-type DomainModel struct {
-	V2Error
-	Metadata MetadataModel     `json:"metadata"`
-	Entity   DomainEntityModel `json:"entity"`
-}
-
-type RouteModel struct {
-	V2Error
-	Metadata MetadataModel    `json:"metadata"`
-	Entity   RouteEntityModel `json:"entity"`
-}
-
-type RoutesModel struct {
-	V2Error
-	Routes []RouteModel `json:"resources"`
+//go:generate counterfeiter -o fakes/cli_client.go --fake-name CliClient . cliClient
+type cliClient interface {
+	GetAppGUID(cliConnection plugin.CliConnection, appName string) (string, error)
+	GetDomainGUID(cliConnection plugin.CliConnection, domainName string) (string, error)
+	GetRouteGUID(cliConnection plugin.CliConnection, hostName string, domainGuid string) (string, error)
+	GetRouteMappingGUID(cliConnection plugin.CliConnection, appGUID string, routeGUID string) (string, error)
+	SetRouteMappingWeight(cliConnection plugin.CliConnection, routeMappingGUID string, routeWeight int) error
 }
 
 // Plugin
@@ -94,97 +56,57 @@ func (c *UpdateRouteWeightPlugin) GetMetadata() plugin.PluginMetadata {
 }
 
 func (c *UpdateRouteWeightPlugin) SetWeight(cliConnection plugin.CliConnection, args []string) error {
-	appName, route, domain, host, routeWeight, err := parseArgs(args)
+	appName, host, domain, routeWeight, err := parseArgs(args)
 	if err != nil {
 		panic(err)
 		// return err
 	}
-	fmt.Println(route)
-	fmt.Println(routeWeight)
 
-	appObject, err := cliConnection.GetApp(appName)
+	appGUID, err := c.CliClient.GetAppGUID(cliConnection, appName)
 	if err != nil {
-		return err
+		panic(err)
+		// return err
 	}
-	appGUID := appObject.Guid
-	fmt.Println(appGUID)
-	routeObjectsJSON, err := cliConnection.CliCommandWithoutTerminalOutput("curl", fmt.Sprintf("v2/routes?q=host:%s;domain_guid:%s", host, domain))
-	if err != nil {
-		return err
-	}
-	routeObjectsJSONString := strings.Join(routeObjectsJSON, "")
-	routes := RoutesModel{}
-	err = json.Unmarshal([]byte(routeObjectsJSONString), &routes)
-	if err != nil {
-		return err
-	}
-	if routes.Description != "" {
-		err = errors.New("Error unmarshalling JSON. booooooo")
-	}
-	routeGUID := ""
-	routesLen := len(routes.Routes)
-	for i := 0; i < routesLen; i++ {
-		//curl domain endpoint
-		route := routes.Routes[i]
-		curlRouteGUID := routes.Routes[i].Metadata.Guid
-		domainJSON, err := cliConnection.CliCommand("curl", route.Entity.DomainURL)
-		if err != nil {
-			return err
-		}
-		domainJSONString := strings.Join(domainJSON, "")
-		curlDomain := DomainEntityModel{}
-		err = json.Unmarshal([]byte(domainJSONString), &curlDomain)
-		if err != nil {
-			return err
-		}
-		if domain == curlDomain.Name {
-			routeGUID = curlRouteGUID
-		}
-	}
-	// will get multiple routes from the above query
-	// json.unmarshall -- we will get an array of route objects
-	// iterate through the array of route objects and curl the domain endpoints until the domain we get back matches the domain we got as input
-	//		and get the route guid for that route object
 
-	// then, curl the route mappings endpoint with the app guid and route guid to get the route mapping guid
-	// use route mapping guid and update the weight
+	domainGUID, err := c.CliClient.GetDomainGUID(cliConnection, domain)
+	if err != nil {
+		panic(err)
+		// return err
+	}
 
-	routeMappingsJSON, err := cliConnection.CliCommand("curl", fmt.Sprintf("/v3/route_mappings?app_guids=%s&route_guids=%s", appGUID, routeGUID))
+	routeGUID, err := c.CliClient.GetRouteGUID(cliConnection, host, domainGUID)
 	if err != nil {
-		return err
+		panic(err)
+		// return err
 	}
-	routeMappingsJSONString := strings.Join(routeMappingsJSON, "")
-	routeMappings := RouteMappingsModel{}
-	err = json.Unmarshal([]byte(routeMappingsJSONString), &routeMappings)
+
+	routeMappingGUID, err := c.CliClient.GetRouteMappingGUID(cliConnection, appGUID, routeGUID)
 	if err != nil {
-		return err
+		panic(err)
+		// return err
 	}
-	//TODO figure out correct route mapping guid to use
-	routeMappingLen := len(routeMappings)
-	routeMappingGUID := ""
-	for i := 0; i < routesLen; i++ {
-		routeMapping = routeMappings.Metadata.Guid
-		testvar = true //HOW DO WE KNOW WHICH ONE WE WANT?
-		if testVar {
-			routeMappingGUID := RouteMappingsModel.Guid
-		}
+
+	err = c.CliClient.SetRouteMappingWeight(cliConnection, routeMappingGUID, routeWeight)
+	if err != nil {
+		panic(err)
+		// return err
 	}
-	_, err = cliConnection.CliCommandWithoutTerminalOutput("curl", fmt.Sprintf("/v3/route_mappings/%s", routeMappingGUID), "-X", "PATCH", "-d", `{"weight": parsedWeight}`)
+
 	return nil
 }
 
-func parseArgs(args []string) (appName string, route string, host string, domain string, weight int, err error) {
+func parseArgs(args []string) (appName string, host string, domain string, weight int, err error) {
 	parsedWeight, err := strconv.ParseInt(args[3], 10, 64)
 	if err != nil {
 		// TODO fix this
 		panic(err)
-		// return err
 	}
 
-	route = args[2]
+	route := args[2]
 
 	// get host
 	idx := strings.Index(route, ".")
+	fmt.Println(route)
 	if idx == -1 {
 		panic("fuuuuck")
 	}
@@ -197,7 +119,7 @@ func parseArgs(args []string) (appName string, route string, host string, domain
 	}
 	domain = route[idx+1 : len(route)]
 
-	return args[1], route, host, domain, int(parsedWeight), nil
+	return args[1], host, domain, int(parsedWeight), nil
 }
 
 func main() {
