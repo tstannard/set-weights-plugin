@@ -92,6 +92,7 @@ func (c *UpdateRouteWeightPlugin) SetWeight(cliConnection plugin.CliConnection, 
 	if err != nil {
 		return err
 	}
+	fmt.Println("Successfully set route mapping weight.")
 
 	return nil
 }
