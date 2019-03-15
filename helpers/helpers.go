@@ -122,10 +122,18 @@ func (c *CliClient) GetRouteMappingGUID(cliConnection plugin.CliConnection, appG
 }
 
 func (c *CliClient) SetRouteMappingWeight(cliConnection plugin.CliConnection, routeMappingGUID string, weight int) error {
-	_, err := cliConnection.CliCommandWithoutTerminalOutput("curl", fmt.Sprintf("/v3/route_mappings/%s", routeMappingGUID), "-X", "PATCH", "-d", fmt.Sprintf(`{"weight": %d}`, weight))
+	routeMappingsJSON, err := cliConnection.CliCommandWithoutTerminalOutput("curl", fmt.Sprintf("/v3/route_mappings/%s", routeMappingGUID), "-X", "PATCH", "-d", fmt.Sprintf(`{"weight": %d}`, weight))
 	if err != nil {
-		panic(err)
-		// return err
+		return err
+	}
+	routeMappingsJSONString := strings.Join(routeMappingsJSON, "")
+	v2Error := V2Error{}
+	err = json.Unmarshal([]byte(routeMappingsJSONString), &v2Error)
+	if err != nil {
+		return err
+	}
+	if v2Error.Description != "" {
+		return fmt.Errorf("%d: %s: %s", v2Error.Code, v2Error.ErrorCode, v2Error.Description)
 	}
 	return err
 }

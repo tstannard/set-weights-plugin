@@ -309,7 +309,9 @@ var _ = Describe("helpers", func() {
 
 		BeforeEach(func() {
 			routeMappingGUID = "testRouteMappingGuid"
-			cliConn.CliCommandWithoutTerminalOutputReturns([]string{}, nil)
+			cliConn.CliCommandWithoutTerminalOutputReturns([]string{`{
+				"resources": []
+			}`}, nil)
 		})
 
 		It("sets the route mapping weight", func() {
@@ -322,6 +324,43 @@ var _ = Describe("helpers", func() {
 				"-X", "PATCH",
 				"-d", fmt.Sprintf(`{"weight": %d}`, routeWeight),
 			}))
+		})
+
+		Context("when set route mapping weight fails", func() {
+			BeforeEach(func() {
+				cliConn.CliCommandWithoutTerminalOutputReturns([]string{}, errors.New("bad things happened"))
+			})
+
+			It("returns an error", func() {
+				err := client.SetRouteMappingWeight(cliConn, routeMappingGUID, routeWeight)
+				Expect(err).To(MatchError("bad things happened"))
+			})
+		})
+
+		Context("when unmarshalling fails", func() {
+			BeforeEach(func() {
+				cliConn.CliCommandWithoutTerminalOutputReturns([]string{`%%%`}, nil)
+			})
+
+			It("returns an error", func() {
+				err := client.SetRouteMappingWeight(cliConn, routeMappingGUID, routeWeight)
+				Expect(err).To(MatchError(`invalid character '%' looking for beginning of value`))
+			})
+		})
+
+		Context("when an error is returned from curl", func() {
+			BeforeEach(func() {
+				cliConn.CliCommandWithoutTerminalOutputReturns([]string{`{
+					 "description": "something bad happened",
+					 "error_code": "foo",
+					 "code": 1
+				}`}, nil)
+			})
+
+			It("returns an error", func() {
+				err := client.SetRouteMappingWeight(cliConn, routeMappingGUID, routeWeight)
+				Expect(err).To(MatchError("1: foo: something bad happened"))
+			})
 		})
 	})
 })
