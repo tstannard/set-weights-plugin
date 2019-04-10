@@ -7,3 +7,9 @@ GOOS=linux GOARCH=386 go build -o ${PLUGIN_NAME}.linux32
 GOOS=windows GOARCH=amd64 go build -o ${PLUGIN_NAME}.win64
 GOOS=windows GOARCH=386 go build -o ${PLUGIN_NAME}.win32
 GOOS=darwin GOARCH=amd64 go build -o ${PLUGIN_NAME}.osx
+
+shasum -a 1 ${PLUGIN_NAME}.linux64
+shasum -a 1 ${PLUGIN_NAME}.linux32
+shasum -a 1 ${PLUGIN_NAME}.win64
+shasum -a 1 ${PLUGIN_NAME}.win32
+shasum -a 1 ${PLUGIN_NAME}.osx
