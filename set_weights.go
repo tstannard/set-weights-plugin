@@ -41,7 +41,7 @@ func (c *UpdateRouteWeightPlugin) GetMetadata() plugin.PluginMetadata {
 		Name: "UpdateRouteWeightPlugin",
 		Version: plugin.VersionType{
 			Major: 1,
-			Minor: 0,
+			Minor: 1,
 			Build: 0,
 		},
 		MinCliVersion: plugin.VersionType{
