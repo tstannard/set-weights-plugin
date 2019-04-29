@@ -81,7 +81,7 @@ func (c *CliClient) GetDomainGUID(cliConnection plugin.CliConnection, domainName
 }
 
 func (c *CliClient) GetRouteGUID(cliConnection plugin.CliConnection, hostName string, domainGuid string) (string, error) {
-	routeObjectsJSON, err := cliConnection.CliCommandWithoutTerminalOutput("curl", fmt.Sprintf("/v2/routes?q=host:%s;domain_guid:%s", hostName, domainGuid))
+	routeObjectsJSON, err := cliConnection.CliCommandWithoutTerminalOutput("curl", fmt.Sprintf("/v2/routes?q=host:%s&q=domain_guid:%s", hostName, domainGuid))
 	if err != nil {
 		return "", err
 	}

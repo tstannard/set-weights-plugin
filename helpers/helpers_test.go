@@ -163,7 +163,7 @@ var _ = Describe("helpers", func() {
 
 			Expect(cliConn.CliCommandWithoutTerminalOutputArgsForCall(0)).To(Equal([]string{
 				"curl",
-				fmt.Sprintf("/v2/routes?q=host:%s;domain_guid:%s", hostname, domainGUID),
+				fmt.Sprintf("/v2/routes?q=host:%s&q=domain_guid:%s", hostname, domainGUID),
 			}))
 
 			Expect(routeGUID).To(Equal("testRouteGuid"))
